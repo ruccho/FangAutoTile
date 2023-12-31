@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Ruccho.Fang
 {
 #if UNITY_EDITOR
-    [CreateAssetMenu(menuName = "Fang/Packer", fileName = "New Fang Auto Tile Packer", order = 1)]
+    [CreateAssetMenu(menuName = "Fang/Packer", fileName = "New Fang Auto Tile Packer", order = 3)]
 #endif
     public class FangAutoTilePacker : ScriptableObject
     {

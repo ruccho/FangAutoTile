@@ -105,14 +105,14 @@ namespace Ruccho.Fang
                     var mainChannel =
                         e.serializedObject.FindProperty(FangAutoTileEditor.p_MainChannel)
                             .objectReferenceValue as Texture2D;
-                    segments.AddRange(e.GetSegments()
+                    segments.AddRange(e.GetSegments(enablePadding)
                         .Select(s => new TileDrawingItem(s, new TemporaryTexture2DBuffer(mainChannel))));
                 }
 
                 var segmentsOrdered = segments.OrderByDescending(s => s.Segment.Width * s.Segment.Height);
 
                 int texSize =
-                    FangAutoTileEditor.GetSuitableTextureSize(segmentsOrdered.Select(s => s.Segment), enablePadding);
+                    FangAutoTileEditor.GetSuitableTextureSize(segmentsOrdered.Select(s => s.Segment));
 
                 //Validate textures
                 for (int i = 0; i < Mathf.Max(wholeChannels, compiledChannelsProp.arraySize); i++)
@@ -160,7 +160,7 @@ namespace Ruccho.Fang
 
 
                 var dest = compiledChannelsProp.GetArrayElementAtIndex(0).objectReferenceValue as Texture2D;
-                FangAutoTileEditor.GenerateTilesForTexture(dest, segmentsOrdered, enablePadding, true);
+                FangAutoTileEditor.GenerateTilesForTexture(dest, segmentsOrdered, true);
             }
 
             //sub channels
@@ -173,14 +173,14 @@ namespace Ruccho.Fang
                     var subChannel =
                         e.serializedObject.FindProperty(FangAutoTileEditor.p_SubChannels).GetArrayElementAtIndex(i - 1)
                             .objectReferenceValue as Texture2D;
-                    segments.AddRange(e.GetSegments()
+                    segments.AddRange(e.GetSegments(enablePadding)
                         .Select(s => new TileDrawingItem(s, new TemporaryTexture2DBuffer(subChannel))));
                 }
 
                 var segmentsOrdered = segments.OrderByDescending(s => s.Segment.Width * s.Segment.Height);
 
                 var dest = compiledChannelsProp.GetArrayElementAtIndex(i).objectReferenceValue as Texture2D;
-                FangAutoTileEditor.GenerateTilesForTexture(dest, segmentsOrdered, enablePadding, false);
+                FangAutoTileEditor.GenerateTilesForTexture(dest, segmentsOrdered, false);
             }
             
             AssetDatabase.SaveAssets();
