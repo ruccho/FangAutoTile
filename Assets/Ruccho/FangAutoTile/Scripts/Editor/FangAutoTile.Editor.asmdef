@@ -1,0 +1,17 @@
+{
+    "name": "FangAutoTile.Editor",
+    "references": [
+        "GUID:aab79d9e2a8111c4ca0d13cf35f847bb"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
