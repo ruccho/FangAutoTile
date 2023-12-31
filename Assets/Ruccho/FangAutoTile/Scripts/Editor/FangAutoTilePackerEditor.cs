@@ -141,13 +141,13 @@ namespace Ruccho.Fang
                         {
                             if (tex.width != texSize || tex.height != texSize || tex.graphicsFormat != format)
                             {
-                                tex.Resize(texSize, texSize, format, false);
+                                tex.Reinitialize(texSize, texSize, format, false);
                             }
                         }
                         else
                         {
                             tex = new Texture2D(texSize, texSize, DefaultFormat.LDR, TextureCreationFlags.None);
-                            tex.Resize(texSize, texSize, format, false);
+                            tex.Reinitialize(texSize, texSize, format, false);
                             tex.name = "Texture";
                             AssetDatabase.AddObjectToAsset(tex, target);
                             element.objectReferenceValue = tex;

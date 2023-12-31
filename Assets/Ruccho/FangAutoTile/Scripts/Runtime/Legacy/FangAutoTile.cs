@@ -532,14 +532,14 @@ namespace Ruccho.Utilities
                 if (!texParamsUnchanged)
                 {
                     //Resize texture
-                    mainTex.Resize(texSize, texSize, format, false);
+                    mainTex.Reinitialize(texSize, texSize, format, false);
                 }
             }
             else
             {
                 //Create an instance of main texture
                 mainTex = new Texture2D(texSize, texSize, DefaultFormat.LDR, TextureCreationFlags.None);
-                mainTex.Resize(texSize, texSize, format, false);
+                mainTex.Reinitialize(texSize, texSize, format, false);
             }
             //Setup textures of custom maps
             if (tile.CustomTextures == null) tile.CustomTextures = new Texture2D[0];
@@ -551,7 +551,7 @@ namespace Ruccho.Utilities
                     if (!texParamsUnchanged)
                     {
                         //Resize texture
-                        customTexs[i].Resize(texSize, texSize, TextureFormat.RGBA32, false);
+                        customTexs[i].Reinitialize(texSize, texSize, TextureFormat.RGBA32, false);
                     }
                 }
                 else
