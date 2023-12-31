@@ -1,0 +1,25 @@
+{
+  "name": "com.ruccho.fang-auto-tile",
+  "version": "3.0.0",
+  "displayName": "Fang Auto Tile",
+  "description": "Fang Auto Tile is an extremely easy auto-tiling system.",
+  "unity": "2021.3",
+  "documentationUrl": "https://github.com/ruccho/FangAutoTile/wiki",
+  "keywords": [
+    "fang",
+    "auto",
+    "tile",
+    "tilemap"
+  ],
+  "author": {
+    "name": "ruccho",
+    "url": "https://ruccho.com/"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Sample",
+      "description": "Contains sample tiles and tilemap",
+      "path": "Samples~/Sample"
+    }
+  ]
+}

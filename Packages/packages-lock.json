@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.ruccho.fang-auto-tile": {
+      "version": "file:com.ruccho.fang-auto-tile",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.2d.animation": {
       "version": "7.0.4",
       "depth": 0,
