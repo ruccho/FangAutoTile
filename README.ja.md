@@ -31,14 +31,13 @@ Fang Auto Tile は Unity で使用できる簡単で高機能なオートタイ�
     - [3. 使用する](#3-使用する)
   - [⚙️ タイル設定](#️-タイル設定)
     - [Tile Generation Settings](#tile-generation-settings-1)
-  - [機能](#機能)
-    - [🎞️ アニメーション / ランダム](#️-アニメーション--ランダム)
-      - [Animation Settings](#animation-settings)
-    - [💡 サブチャンネル](#-サブチャンネル)
-    - [📦 Packer](#-packer)
-    - [🤝 Connector Tiles](#-connector-tiles)
-    - [⛰️ スロープ (実験的)](#️-スロープ-実験的)
-    - [📝 Override Tiles](#-override-tiles)
+  - [🎞️ アニメーション / ランダム](#️-アニメーション--ランダム)
+    - [Animation Settings](#animation-settings)
+  - [💡 サブチャンネル](#-サブチャンネル)
+  - [📦 Packer](#-packer)
+  - [🤝 Connector Tiles](#-connector-tiles)
+  - [⛰️ スロープ (実験的)](#️-スロープ-実験的)
+  - [📝 Override Tiles](#-override-tiles)
   - [タイルシートのフォーマット](#タイルシートのフォーマット)
 
 
@@ -128,9 +127,7 @@ Project ビューの Create メニューから **Fang > Tile**を選択して Fa
  - **Packer**: このタイルで使用されている Packer です。 ([📦 Packer](#-packer) の項で説明します。)
 
 
-## 機能
-
-### 🎞️ アニメーション / ランダム
+## 🎞️ アニメーション / ランダム
 
 Fang Auto Tile はアニメーションタイルとランダムに見た目を変えるタイルをサポートしています。
 
@@ -140,7 +137,7 @@ Fang Auto Tile はアニメーションタイルとランダムに見た目を�
 
 タイルシートから生成を行ったあと、Tile Settings の **Frame Mode** を **Animation** または **Random** に設定します。
 
-#### Animation Settings
+### Animation Settings
 
 Frame Mode が **Animation** のとき、追加の設定が Tile Settings で可能です。
 
@@ -148,7 +145,7 @@ Frame Mode が **Animation** のとき、追加の設定が Tile Settings で可
  - **Animation Max Speed**: ランダムなアニメーション速度の上限です。
  - **Animation Start Time**: アニメーションの開始時間です。
 
-### 💡 サブチャンネル
+## 💡 サブチャンネル
 
 ノーマルマップやエミッションマップなどの複数チャンネルを使用することができます。
 
@@ -164,7 +161,7 @@ Fang Auto Tile はすべての隣接パターンに対応するタイルのス�
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/a0157fd3-c0e5-4c73-a342-e07a158a1918)
 
-### 📦 Packer
+## 📦 Packer
 
 **Packer** は複数タイルが生成したテクスチャを一つのテクスチャにパックできる機能です。これは描画パスを削減しパフォーマンスの向上に役立ちます。
 
@@ -174,7 +171,7 @@ Project ビューの Create メニューから **Fang > Packer** を選択し、
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/deabf80a-9aba-4223-adf6-c5dc460df8f0)
 
-### 🤝 Connector Tiles
+## 🤝 Connector Tiles
 
 **Connector Tile** は、隣接する Fang Auto Tile に、同じタイルが接続していると誤認させることができる透明なタイルです。
 
@@ -188,7 +185,7 @@ Connector Tile は透明ですが、エディタ上でのみ色を付けて表�
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/319d49bd-a769-4119-af8d-fb119a7e5a18)
 
-### ⛰️ スロープ (実験的)
+## ⛰️ スロープ (実験的)
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/bcdf39fb-aaea-44e0-9f6f-2e12a3c7075a)
 
@@ -226,7 +223,7 @@ Fang Auto Tile ではスロープを自動的に扱うことができます。
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/ee54be08-247f-4476-a85f-d3fb663d2272)
 
 
-### 📝 Override Tiles
+## 📝 Override Tiles
 
 スロープでは、どのタイルがスロープなのか・あるいはスロープではないのかを指定したいかと思います。**Override Tile** 使うことで、オリジナルの Fang Auto Tile アセットのバリアントを作成し、**Is Slope** プロパティをオーバーライドすることができます。
 

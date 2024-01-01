@@ -31,14 +31,13 @@ Fang Auto Tile is an easy and fully featured auto-tiling system for Unity.
     - [3. Use](#3-use)
   - [⚙️ Tile Settings](#️-tile-settings)
     - [Tile Generation Settings](#tile-generation-settings-1)
-  - [Features](#features)
-    - [🎞️ Animation / Random](#️-animation--random)
-      - [Animation Settings](#animation-settings)
-    - [💡 Sub-channels](#-sub-channels)
-    - [📦 Packer](#-packer)
-    - [🤝 Connector Tiles](#-connector-tiles)
-    - [⛰️ Slopes (experimental)](#️-slopes-experimental)
-    - [📝 Override Tiles](#-override-tiles)
+  - [🎞️ Animation / Random](#️-animation--random)
+    - [Animation Settings](#animation-settings)
+  - [💡 Sub-channels](#-sub-channels)
+  - [📦 Packer](#-packer)
+  - [🤝 Connector Tiles](#-connector-tiles)
+  - [⛰️ Slopes (experimental)](#️-slopes-experimental)
+  - [📝 Override Tiles](#-override-tiles)
   - [Tile Sheet Format](#tile-sheet-format)
 
 
@@ -128,9 +127,7 @@ These settings is used in generation process and don't applied in realtime. To a
  - **Packer**: the packer used by this tile. (described in [📦 Packer](#-packer) section below)
 
 
-## Features
-
-### 🎞️ Animation / Random
+## 🎞️ Animation / Random
 
 Fang Auto Tile supports animated tiles and randomly selected tiles.
 
@@ -140,7 +137,7 @@ To use them, make a tile sheet **with frames arranged horizontally**.
 
 After generating with the frames, set **Frame Mode** in Tile Settings to **Animation** or **Random**.
 
-#### Animation Settings
+### Animation Settings
 
 With **Animation** frame mode, additional settings are available in Tile Settings.
 
@@ -148,7 +145,7 @@ With **Animation** frame mode, additional settings are available in Tile Setting
  - **Animation Max Speed**: the maximum possible speed at which the animation of the tile is played.
  - **Animation Start Time**: the starting time of the animation.
 
-### 💡 Sub-channels
+## 💡 Sub-channels
 
 You can use multiple channels for your tiles such as nornal maps and emission maps.
 
@@ -165,7 +162,7 @@ Then click **Generate!** again and baked textures will appear as sub assets of t
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/a0157fd3-c0e5-4c73-a342-e07a158a1918)
 
-### 📦 Packer
+## 📦 Packer
 
 **Packer** is a feature to pack generated textures of multiple tiles into a single texture. It helps you to reduce rendering passes and improve performance.
 
@@ -175,7 +172,7 @@ Then register Fang Auto Tile assets you want to pack and click `Generate!` butto
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/deabf80a-9aba-4223-adf6-c5dc460df8f0)
 
-### 🤝 Connector Tiles
+## 🤝 Connector Tiles
 
 **Connector Tile** is a invisible tile that can be tricked into thinking it is adjacent to surrounding tiles.
 
@@ -189,7 +186,7 @@ Connector tiles are invisible but you can make them visible only on the editor b
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/319d49bd-a769-4119-af8d-fb119a7e5a18)
 
-### ⛰️ Slopes (experimental)
+## ⛰️ Slopes (experimental)
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/bcdf39fb-aaea-44e0-9f6f-2e12a3c7075a)
 
@@ -226,7 +223,7 @@ To set the tile is a slope, enable **Is Slope** property in Tile Settings.
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/ee54be08-247f-4476-a85f-d3fb663d2272)
 
 
-### 📝 Override Tiles
+## 📝 Override Tiles
 
 With slopes, you may want to specify which tiles are slopes and the others are rectangle. You can use **Override Tiles** feature to create a variant of the original Fang Auto Tile asset that behaves as a slope tile or a rectangle tile.
 
