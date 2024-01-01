@@ -107,9 +107,9 @@ Place your tile asset on the **Tile Palette** window and use it!
  - **Frame Mode**: described in [🎞️ Animation / Random](#️-animation--random) section below.
  - **Animation**: described in [🎞️ Animation / Random](#️-animation--random) section below.
  - **Collision**
-   - `None`: the tile will have no physics shape.
-   - `Sprite`: the tile will have a physics shape generated from the sprite automatically.
-   - `Grid`: the tile will have a physics shape that fills its tile rect.
+   - `None`: the tile will have no collider.
+   - `Sprite`: the tile will have a collider created from the sprite's physics shape.
+   - `Grid`: the tile will have a collider that fills its tile rect.
  - **Is Slope**:  described in [⛰️ Slopes (experimental)](#️-slopes-experimental) section below.
  - **Connectable Tiles**: You can specify other Fang Auto Tiles that this tile should consider connected to.
 
@@ -119,6 +119,9 @@ These settings is used in generation process and don't applied in realtime. To a
 
  - **Enable Padding**: avoids dirty lines appear between tiles. It extrudes the pixels on the outer edge of tiles.
  - **One Tile Per Unit**: automatically sets number of pixels per unit (PPU) to be adjusted to 1 tile per unit. Disabling this will show custom PPU property.
+ - **Physics Shape Generation**
+   - `Sprite`: generates a physics shape from the content of the sprite.
+   - `Fine`: generates a physics shape geometrically simple.
  - **Wrap Mode**: wrap mode of generated tile textures.
  - **Filter Mode**: filer mode of generated tile textures.
  - **Num Slopes**: described in [⛰️ Slopes (experimental)](#️-slopes-experimental) section below.

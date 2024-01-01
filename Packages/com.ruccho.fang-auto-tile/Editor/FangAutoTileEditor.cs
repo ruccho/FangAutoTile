@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Tilemaps;
 using Object = UnityEngine.Object;
 
 namespace Ruccho.Fang
@@ -15,6 +16,7 @@ namespace Ruccho.Fang
     {
         public static readonly string p_EnablePadding = "enablePadding";
         public static readonly string p_OneTilePerUnit = "oneTilePerUnit";
+        public static readonly string p_PhysicsShapeGeneration = "physicsShapeGeneration";
         public static readonly string p_PixelsPerUnit = "pixelsPerUnit";
         public static readonly string p_WrapMode = "wrapMode";
         public static readonly string p_FilterMode = "filterMode";
@@ -92,6 +94,8 @@ namespace Ruccho.Fang
                         EditorGUILayout.PropertyField(serializedObject.FindProperty(p_PixelsPerUnit));
                     }
 
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_PhysicsShapeGeneration));
+                    
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(p_WrapMode));
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(p_FilterMode));
 
@@ -642,43 +646,40 @@ namespace Ruccho.Fang
                     if (createSprite)
                     {
                         var sprite = s.SpriteProperty.objectReferenceValue as Sprite;
-                        if (sprite && sprite.texture == dstChannel && sprite.rect.Equals(spriteRect) &&
-                            sprite.pixelsPerUnit == s.PixelsPerUnit)
-                        {
-                            //Use existing
-                        }
-                        else
-                        {
-                            if (sprite) DestroyImmediate(sprite, true);
+                        
+                        if (sprite) DestroyImmediate(sprite, true);
 
-                            sprite = Sprite.Create(dstChannel, spriteRect, new Vector2(0.5f, 0.5f),
-                                s.PixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, true);
+                        sprite = Sprite.Create(dstChannel, spriteRect, new Vector2(0.5f, 0.5f),
+                            s.PixelsPerUnit, 0, SpriteMeshType.FullRect);
 
-                            AssetDatabase.AddObjectToAsset(sprite, s.SpriteProperty.serializedObject.targetObject);
+                        AssetDatabase.AddObjectToAsset(sprite, s.SpriteProperty.serializedObject.targetObject);
 
-                            s.SpriteProperty.objectReferenceValue = sprite;
-                        }
+                        s.SpriteProperty.objectReferenceValue = sprite;
                         
                         sprite.hideFlags |= HideFlags.HideInHierarchy;
 
-                        var spriteSO = new SerializedObject(sprite);
-                        var contoursArrayProp = spriteSO.FindProperty("m_PhysicsShape");
                         var contours = s.PhysicsShape.Points;
-                        contoursArrayProp.arraySize = contours.Count;
-                        for (int i = 0; i < contours.Count; i++)
+
+                        if (contours != null)
                         {
-                            var pointsArrayProp = contoursArrayProp.GetArrayElementAtIndex(i);
-                            var points = contours[i];
-                            pointsArrayProp.arraySize = points.Length;
-
-                            for (int j = 0; j < points.Length; j++)
+                            var spriteSO = new SerializedObject(sprite);
+                            var contoursArrayProp = spriteSO.FindProperty("m_PhysicsShape");
+                            contoursArrayProp.arraySize = contours.Count;
+                            for (int i = 0; i < contours.Count; i++)
                             {
-                                var pointProp = pointsArrayProp.GetArrayElementAtIndex(j);
-                                pointProp.vector2Value = points[j];
-                            }
-                        }
+                                var pointsArrayProp = contoursArrayProp.GetArrayElementAtIndex(i);
+                                var points = contours[i];
+                                pointsArrayProp.arraySize = points.Length;
 
-                        spriteSO.ApplyModifiedPropertiesWithoutUndo();
+                                for (int j = 0; j < points.Length; j++)
+                                {
+                                    var pointProp = pointsArrayProp.GetArrayElementAtIndex(j);
+                                    pointProp.vector2Value = points[j];
+                                }
+                            }
+
+                            spriteSO.ApplyModifiedPropertiesWithoutUndo();
+                        }
                     }
 
                     x += w;
@@ -694,6 +695,7 @@ namespace Ruccho.Fang
 
             var explicitPixelsPerUnit = serializedObject.FindProperty(p_PixelsPerUnit).intValue;
             var oneTilePerUnit = serializedObject.FindProperty(p_OneTilePerUnit).boolValue;
+            var physicsShapeGeneration = (PhysicsShapeGenerationMode) serializedObject.FindProperty(p_PhysicsShapeGeneration).enumValueIndex;
 
             var numSlopes = serializedObject.FindProperty(p_NumSlopes).intValue;
 
@@ -755,16 +757,20 @@ namespace Ruccho.Fang
                         pixelsPerUnit,
                         enablePadding
                     );
-                    image.PhysicsShape = new(new List<Vector2[]>(new[]
+                    if (physicsShapeGeneration == PhysicsShapeGenerationMode.Fine)
                     {
-                        new[]
+                        image.PhysicsShape = new(new List<Vector2[]>(new[]
                         {
-                            new Vector2(-0.5f, -0.5f),
-                            new Vector2(-0.5f, 0.5f),
-                            new Vector2(0.5f, 0.5f),
-                            new Vector2(0.5f, -0.5f)
-                        }
-                    }));
+                            new[]
+                            {
+                                new Vector2(-0.5f, -0.5f),
+                                new Vector2(-0.5f, 0.5f),
+                                new Vector2(0.5f, 0.5f),
+                                new Vector2(0.5f, -0.5f)
+                            }
+                        }));
+                    }
+
                     yield return image;
                 }
             }
@@ -824,49 +830,53 @@ namespace Ruccho.Fang
                             // shape
                             var shape = new List<Vector2>();
 
-                            if (index > 0)
+                            if (physicsShapeGeneration == PhysicsShapeGenerationMode.Fine)
                             {
-                                shape.Add(new(0, (float)index / (sizeIndex + 1))); // left
-                            }
 
-                            shape.Add(new(1, (float)(index + 1) / (sizeIndex + 1))); // right
-                            shape.Add(new(1, 0)); // right (bottom)
-                            shape.Add(new(0, 0)); // left (bottom)
-
-
-                            // transform
-                            for (int i = 0; i < shape.Count; i++)
-                            {
-                                var p = shape[i];
-
-                                p.x -= 0.5f;
-                                p.y -= 0.5f;
-                                
-                                if (isVertical)
+                                if (index > 0)
                                 {
-                                    (p.x, p.y) = (-p.y, -p.x);
+                                    shape.Add(new(0, (float)index / (sizeIndex + 1))); // left
                                 }
 
-                                switch (direction)
-                                {
-                                    case 0:
-                                        break;
-                                    case 1:
-                                        p.x = -p.x;
-                                        p.y = -p.y;
-                                        break;
-                                    case 2:
-                                        p.x = -p.x;
-                                        break;
-                                    case 3:
-                                        p.y = -p.y;
-                                        break;
-                                }
-                                
-                                shape[i] = p;
-                            }
+                                shape.Add(new(1, (float)(index + 1) / (sizeIndex + 1))); // right
+                                shape.Add(new(1, 0)); // right (bottom)
+                                shape.Add(new(0, 0)); // left (bottom)
 
-                            image.PhysicsShape = new(new List<Vector2[]>(new[] { shape.ToArray() }));
+
+                                // transform
+                                for (int i = 0; i < shape.Count; i++)
+                                {
+                                    var p = shape[i];
+
+                                    p.x -= 0.5f;
+                                    p.y -= 0.5f;
+
+                                    if (isVertical)
+                                    {
+                                        (p.x, p.y) = (-p.y, -p.x);
+                                    }
+
+                                    switch (direction)
+                                    {
+                                        case 0:
+                                            break;
+                                        case 1:
+                                            p.x = -p.x;
+                                            p.y = -p.y;
+                                            break;
+                                        case 2:
+                                            p.x = -p.x;
+                                            break;
+                                        case 3:
+                                            p.y = -p.y;
+                                            break;
+                                    }
+
+                                    shape[i] = p;
+                                }
+
+                                image.PhysicsShape = new(new List<Vector2[]>(new[] { shape.ToArray() }));
+                            }
 
 
                             yield return image;

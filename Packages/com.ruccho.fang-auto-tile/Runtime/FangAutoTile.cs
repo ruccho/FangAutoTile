@@ -30,6 +30,7 @@ namespace Ruccho.Fang
         private bool oneTilePerUnit = true;
 
         [SerializeField] private int pixelsPerUnit = 16;
+        [SerializeField] private PhysicsShapeGenerationMode physicsShapeGeneration = PhysicsShapeGenerationMode.Sprite;
         [SerializeField] private TextureWrapMode wrapMode = TextureWrapMode.Clamp;
         [SerializeField] private FilterMode filterMode = FilterMode.Point;
 
@@ -510,5 +511,11 @@ namespace Ruccho.Fang
     {
         [SerializeField] private Sprite[] frames = default;
         public Sprite[] Frames => frames;
+    }
+
+    public enum PhysicsShapeGenerationMode
+    {
+        Sprite,
+        Fine
     }
 }

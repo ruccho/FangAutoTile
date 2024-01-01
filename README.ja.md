@@ -119,6 +119,9 @@ Project ビューの Create メニューから **Fang > Tile**を選択して Fa
 
  - **Enable Padding**: タイルの間に表示される不正線を防止します。生成されるテクスチャ上でタイルの外縁のピクセルを外側に拡大することで行われます。
  - **One Tile Per Unit**: タイルの大きさを 1 Unit に設定します。チェックを外すと手動で Pixels Per Unit を調整できるプロパティが現れます。
+ - **Physics Shape Generation**
+   - `Sprite`: スプライトの内容に応じて自動的に Physics Shape を生成します。
+   - `Fine`: 幾何学的に単純な Physics Shape を生成します。
  - **Wrap Mode**: 生成されるテクスチャの Wrap Mode です。
  - **Filter Mode**: 生成されるテクスチャの Filter Mode です。
  - **Num Slopes**: [⛰️ スロープ (実験的)](#️-スロープ-実験的) の項で説明します。
