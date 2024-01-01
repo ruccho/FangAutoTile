@@ -72,8 +72,9 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 # CUSTOM
-Assets/AssetStoreTools
-Assets/AssetStoreTools.meta
-Packages/com.unity.asset-store-tools
+/Packages/com.unity.asset-store-tools
 /.idea/
-ProjectSettings/RiderScriptEditorPersistedState.asset
+/ProjectSettings/RiderScriptEditorPersistedState.asset
+/Assets/Sandbox
+/Assets/Sandbox.meta
+/Planning

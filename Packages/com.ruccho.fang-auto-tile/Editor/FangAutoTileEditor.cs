@@ -49,6 +49,8 @@ namespace Ruccho.Fang
         public static readonly string p_STAD_VerticalTiles = "verticalTiles";
         public static readonly string p_STD_Frames = "frames";
 
+        private static readonly GUIContent tempGUIContent = new ();
+
         private static readonly int paddingSize = 2;
 
         public override void OnInspectorGUI()
@@ -68,7 +70,8 @@ namespace Ruccho.Fang
 
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(p_ColliderType));
 
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_IsSlope));
+                    tempGUIContent.text = "Is Slope (experimental)";
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_IsSlope), tempGUIContent);
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(p_ConnectableTiles));
                 }
 

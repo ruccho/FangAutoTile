@@ -17,9 +17,12 @@
   },
   "samples": [
     {
-      "displayName": "Basic Sample",
-      "description": "Contains sample tiles and tilemap",
-      "path": "Samples~/Sample"
+      "displayName": "Basic",
+      "path": "Samples~/Basic"
+    },
+    {
+      "displayName": "Slopes and overrides",
+      "path": "Samples~/Slopes and overrides"
     }
   ]
 }

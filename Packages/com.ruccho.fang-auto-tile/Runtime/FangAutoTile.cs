@@ -73,11 +73,18 @@ namespace Ruccho.Fang
         public FangAutoTile Original => this;
         public bool IsSlope => isSlope;
 
+        private Sprite[] currentAnimationFrames = default;
+        
         #region Internal Members
 
         public IEnumerable<Sprite> GetAllSprites()
         {
-            return combinations.SelectMany(c => c.Frames);
+            var spritesFromCombinations = combinations?.SelectMany(c => c.Frames) ?? Enumerable.Empty<Sprite>();
+            var spritesFromSlopes = slopeDefinition.Sizes?.SelectMany(s => s.GetAngles())
+                .SelectMany(a => a.GetTileDefinitions()).SelectMany(tileDefs => tileDefs)
+                .SelectMany(tileDef => tileDef.Frames);
+
+            return spritesFromCombinations.Concat(spritesFromSlopes);
         }
 
         #endregion
@@ -95,28 +102,25 @@ namespace Ruccho.Fang
             }
         }
 
-        private Sprite[] currentAnimationFrames = default;
-
         public override void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData)
         {
             GetTileData(position, tilemap, ref tileData, isSlope, editorTint);
         }
 
-        public void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData, bool isSlope, Color editorTint)
+        public void GetTileData(Vector3Int position, ITilemap tilemap, ref TileData tileData, bool isSlope,
+            Color editorTint)
         {
             tileData.transform = Matrix4x4.identity;
 #if UNITY_EDITOR
-            if (Application.isPlaying)
-            {
-                tileData.color = Color.white;
-            }
-            else
+            if (!Application.isPlaying)
             {
                 tileData.color = editorTint;
             }
-#else
-            tileData.color = Color.white;
+            else
 #endif
+            {
+                tileData.color = Color.white;
+            }
 
             byte neighborValue = GetNeighborValue(position, tilemap);
 
@@ -330,7 +334,6 @@ namespace Ruccho.Fang
             }
         }
 
-
         private bool TileValue(ITilemap tileMap, Vector3Int position)
         {
             return TileValue(tileMap, position, out _);
@@ -475,6 +478,14 @@ namespace Ruccho.Fang
                 _ => null
             };
         }
+
+        public IEnumerable<SlopeTileAngleDefinition> GetAngles()
+        {
+            yield return floorUp;
+            yield return floorDown;
+            yield return ceilUp;
+            yield return ceilDown;
+        }
     }
 
     [Serializable]
@@ -485,6 +496,12 @@ namespace Ruccho.Fang
 
         public SlopeTileDefinition[] HorizontalTiles => horizontalTiles;
         public SlopeTileDefinition[] VerticalTiles => verticalTiles;
+
+        public IEnumerable<SlopeTileDefinition[]> GetTileDefinitions()
+        {
+            yield return horizontalTiles;
+            yield return verticalTiles;
+        }
     }
 
 
