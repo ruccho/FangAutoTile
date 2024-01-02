@@ -52,12 +52,12 @@ Fang Auto Tile は Unity で使用できる簡単で高機能なオートタイ�
 Package Manager から次の git URL を追加してください:
 
 ```
-https://github.com/ruccho/FangAutoTile.git?path=/Packages/com.ruccho/fang-auto-tile
+https://github.com/ruccho/FangAutoTile.git?path=/Packages/com.ruccho.fang-auto-tile
 ```
 
 #### Asset Store 経由でのインストール
 
-アセットページはこちら: https://assetstore.unity.com/packages/tools/sprite-management/fang-auto-tile-132602
+アセットページはこちら (アップデートには時間差があります): https://assetstore.unity.com/packages/tools/sprite-management/fang-auto-tile-132602
 
 ### サンプル
 
