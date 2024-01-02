@@ -57,7 +57,7 @@ https://github.com/ruccho/FangAutoTile.git?path=/Packages/com.ruccho/fang-auto-t
 
 #### via Asset Store
 
-Asset page here: https://assetstore.unity.com/packages/tools/sprite-management/fang-auto-tile-132602
+Asset page here: https://assetstore.unity.com/packages/slug/132602
 
 ### Samples
 
