@@ -52,7 +52,7 @@ Fang Auto Tile is an easy and fully featured auto-tiling system for Unity.
 Add git URL from Package Manager: 
 
 ```
-https://github.com/ruccho/FangAutoTile.git?path=/Packages/com.ruccho/fang-auto-tile
+https://github.com/ruccho/FangAutoTile.git?path=/Packages/com.ruccho.fang-auto-tile
 ```
 
 #### via Asset Store
