@@ -230,15 +230,15 @@ Fang Auto Tile ではスロープを自動的に扱うことができます。
 
 スロープでは、どのタイルがスロープなのか・あるいはスロープではないのかを指定したいかと思います。**Override Tile** 使うことで、オリジナルの Fang Auto Tile アセットのバリアントを作成し、**Is Slope** プロパティをオーバーライドすることができます。
 
-Override Tile を作成するには、Project ビューの Create メニューから **Fang > Override Tile** を選択します。.
+Override Tile を作成するには、Project ビューの Create メニューから **Fang > Override Tile** を選択します。
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/0a6bc136-6d5a-4b0c-9712-6035f42952d8)
 
  - **Original**: オリジナルの Fang Auto Tile アセットをセットします。
- - **Is Slope**: オリジナルの **Is Slope** property.
- - **Editor Tint**: Color applied to this tile to distinguish which tiles are overridden on the tilemap. This property is only applied in the edit mode.
+ - **Is Slope**: オリジナルの **Is Slope** プロパティです。
+ - **Editor Tint**: タイルマップ上でどのタイルがオーバーライドされているかを判別するために適用される乗算色。Edit Modeでのみ適用されます。
 
-This is the example how override tiles work (blue tiles are overridden as rectangle tiles):
+こちらはオーバーライドタイルの使用例です。（青いタイルが非スロープタイルとしてオーバーライドされています）
 
 ![image](https://github.com/ruccho/FangAutoTile/assets/16096562/51ab1da9-5724-4c8c-8a61-8e7d9c0b503c)
 
