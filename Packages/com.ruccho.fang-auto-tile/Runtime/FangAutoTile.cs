@@ -81,9 +81,9 @@ namespace Ruccho.Fang
         public IEnumerable<Sprite> GetAllSprites()
         {
             var spritesFromCombinations = combinations?.SelectMany(c => c.Frames) ?? Enumerable.Empty<Sprite>();
-            var spritesFromSlopes = slopeDefinition.Sizes?.SelectMany(s => s.GetAngles())
+            var spritesFromSlopes = slopeDefinition?.Sizes?.SelectMany(s => s.GetAngles())
                 .SelectMany(a => a.GetTileDefinitions()).SelectMany(tileDefs => tileDefs)
-                .SelectMany(tileDef => tileDef.Frames);
+                .SelectMany(tileDef => tileDef.Frames) ?? Enumerable.Empty<Sprite>();
 
             return spritesFromCombinations.Concat(spritesFromSlopes);
         }

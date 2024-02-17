@@ -335,11 +335,10 @@ namespace Ruccho.Fang
             }
             finally
             {
+                serializedObject.ApplyModifiedProperties();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-
-                serializedObject.ApplyModifiedProperties();
             }
         }
 
@@ -365,11 +364,10 @@ namespace Ruccho.Fang
             }
             */
 
+            serializedObject.ApplyModifiedProperties();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-
             AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-            serializedObject.ApplyModifiedProperties();
         }
 
         public void GenerateCombination()
