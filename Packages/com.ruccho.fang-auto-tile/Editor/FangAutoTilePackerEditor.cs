@@ -23,6 +23,8 @@ namespace Ruccho.Fang
         public override Texture2D RenderStaticPreview(string assetPath, Object[] subAssets, int width, int height)
         {
             var compiledChannelsProp = serializedObject.FindProperty("compiledChannels");
+            if (compiledChannelsProp.arraySize == 0) return base.RenderStaticPreview(assetPath, subAssets, width, height);
+            
             var channelProp = compiledChannelsProp.GetArrayElementAtIndex(0);
             
             if (channelProp != null)
@@ -183,18 +185,18 @@ namespace Ruccho.Fang
                 FangAutoTileEditor.GenerateTilesForTexture(dest, segmentsOrdered, false);
             }
             
+            serializedObject.ApplyModifiedProperties();
+            
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             foreach (var e in editors)
             {
-                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(e.target));
                 e.serializedObject.ApplyModifiedProperties();
+                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(e.target));
             }
 
             AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-            
-            serializedObject.ApplyModifiedProperties();
         }
     }
 }
