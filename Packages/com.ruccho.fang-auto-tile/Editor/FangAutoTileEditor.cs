@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +21,8 @@ namespace Ruccho.Fang
         public static readonly string p_WrapMode = "wrapMode";
         public static readonly string p_FilterMode = "filterMode";
         public static readonly string p_MainChannel = "mainChannel";
+        public static readonly string p_SpriteSource = "spriteSource";
+        public static readonly string p_SourceSprite = "sourceSprite";
         public static readonly string p_NumSlopes = "numSlopes";
         public static readonly string p_SubChannels = "subChannels";
 
@@ -34,12 +36,14 @@ namespace Ruccho.Fang
 
 
         public static readonly string p_Packer = "packer";
+        public static readonly string p_SourcePacker = "sourcePacker";
         public static readonly string p_CompiledChannels = "compiledChannels";
         public static readonly string p_Combinations = "combinations";
         public static readonly string p_CombinationTable = "combinationTable";
 
         public static readonly string p_TC_CombinationId = "combinationId";
         public static readonly string p_TC_Frames = "frames";
+        public static readonly string p_ExplicitPhysicsShapes = "explicitPhysicsShapes";
 
         public static readonly string p_SlopeDefinition = "slopeDefinition";
         public static readonly string p_SD_Sizes = "sizes";
@@ -84,7 +88,13 @@ namespace Ruccho.Fang
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_EnablePadding));
+                    var spriteSourceProp = serializedObject.FindProperty(p_SpriteSource);
+                    EditorGUILayout.PropertyField(spriteSourceProp);
+                    bool useSourceSprite = !spriteSourceProp.hasMultipleDifferentValues &&
+                                           spriteSourceProp.enumValueIndex ==
+                                           (int)FangAutoTile.SpriteSourceType.SourceSpriteMesh;
+
+                    if (!useSourceSprite) EditorGUILayout.PropertyField(serializedObject.FindProperty(p_EnablePadding));
 
                     var oneTilePerUnitProp = serializedObject.FindProperty(p_OneTilePerUnit);
                     EditorGUILayout.PropertyField(oneTilePerUnitProp);
@@ -95,30 +105,39 @@ namespace Ruccho.Fang
                     }
 
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(p_PhysicsShapeGeneration));
-                    
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_WrapMode));
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_FilterMode));
 
-
-                    var mainChannelProp = serializedObject.FindProperty(p_MainChannel);
-
-                    if (!serializedObject.isEditingMultipleObjects)
+                    if (!useSourceSprite)
                     {
-                        GUILayout.Space(EditorGUIUtility.singleLineHeight * 0.5f);
+                        EditorGUILayout.PropertyField(serializedObject.FindProperty(p_WrapMode));
+                        EditorGUILayout.PropertyField(serializedObject.FindProperty(p_FilterMode));
+                    }
 
-                        EditorGUILayout.LabelField("Sources", EditorStyles.boldLabel);
+                    GUILayout.Space(EditorGUIUtility.singleLineHeight * 0.5f);
 
-                        EditorGUILayout.PropertyField(serializedObject.FindProperty(p_NumSlopes));
+                    EditorGUILayout.LabelField("Sources", EditorStyles.boldLabel);
 
-                        mainChannelProp.objectReferenceValue = EditorGUILayout.ObjectField("Main Channel",
-                            mainChannelProp.objectReferenceValue, typeof(Texture2D), false);
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_NumSlopes));
+
+                    if (useSourceSprite)
+                    {
+                        EditorGUILayout.PropertyField(serializedObject.FindProperty(p_SourceSprite));
                     }
                     else
                     {
-                        EditorGUILayout.ObjectField(mainChannelProp, typeof(Texture2D));
-                    }
+                        var mainChannelProp = serializedObject.FindProperty(p_MainChannel);
 
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty(p_SubChannels));
+                        if (!serializedObject.isEditingMultipleObjects)
+                        {
+                            mainChannelProp.objectReferenceValue = EditorGUILayout.ObjectField("Main Channel",
+                                mainChannelProp.objectReferenceValue, typeof(Texture2D), false);
+                        }
+                        else
+                        {
+                            EditorGUILayout.ObjectField(mainChannelProp, typeof(Texture2D));
+                        }
+
+                        EditorGUILayout.PropertyField(serializedObject.FindProperty(p_SubChannels));
+                    }
                 }
 
                 GUILayout.Space(20f);
@@ -132,7 +151,7 @@ namespace Ruccho.Fang
 
 
                 EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(p_Packer));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(UsesSourceSprite ? p_SourcePacker : p_Packer));
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(validityMessage, isValid ? MessageType.Info : MessageType.Error);
@@ -215,8 +234,110 @@ namespace Ruccho.Fang
         }
 
 
+        public bool UsesSourceSprite => serializedObject.FindProperty(p_SpriteSource).enumValueIndex ==
+                                        (int)FangAutoTile.SpriteSourceType.SourceSpriteMesh;
+
+        private Sprite SourceSprite => serializedObject.FindProperty(p_SourceSprite).objectReferenceValue as Sprite;
+
+        private FangSourceSpritePacker SourcePacker =>
+            serializedObject.FindProperty(p_SourcePacker).objectReferenceValue as FangSourceSpritePacker;
+
+        private bool CheckSourceSpriteValidity(out string message)
+        {
+            var sprite = SourceSprite;
+            if (!sprite)
+            {
+                message = "Set source sprite.";
+                return false;
+            }
+
+            int width = Mathf.RoundToInt(sprite.rect.width);
+            int height = Mathf.RoundToInt(sprite.rect.height);
+            int numSlopes = serializedObject.FindProperty(p_NumSlopes).intValue;
+
+            if (!FangTileLayout.TryGet(width, height, numSlopes, out _))
+            {
+                message = "Size of the source sprite has to be specific format:\n" +
+                          " width:  (Tile size) * (Number of frame)\n" +
+                          $" height: (Tile size) * {FangTileLayout.GetNumTilesInFrame(numSlopes)} (when NumSlopes is {numSlopes})\n";
+                return false;
+            }
+
+            var path = AssetDatabase.GetAssetPath(sprite);
+            if (AssetImporter.GetAtPath(path) is TextureImporter textureImporter)
+            {
+                var settings = new TextureImporterSettings();
+                textureImporter.ReadTextureSettings(settings);
+                if (settings.spriteMeshType != SpriteMeshType.FullRect)
+                {
+                    message = "Set Mesh Type of the source sprite to Full Rect in the Texture Import Settings.";
+                    return false;
+                }
+            }
+            else if (sprite.vertices.Length != 4)
+            {
+                message = "The source sprite has to use a full rect mesh.";
+                return false;
+            }
+
+            var sourcePacker = SourcePacker;
+            if (sourcePacker && !sourcePacker.TryGetEntry(sprite, out _))
+            {
+                message = $"The source sprite is not packed in \"{sourcePacker.name}\". Generate the packer again.";
+                return false;
+            }
+
+            var secondaries = FangMeshSpriteBuilder.GetSecondaryTextures(sprite);
+            message = "Ready to generate a tile!\n" +
+                      "Secondary textures: " +
+                      (secondaries.Length == 0 ? "none" : string.Join(", ", secondaries.Select(s => s.name))) +
+                      (sourcePacker ? $"\nPacked in \"{sourcePacker.name}\"" : "");
+            return true;
+        }
+
+        private PhysicsShapeGenerationMode PhysicsShapeGeneration =>
+            (PhysicsShapeGenerationMode)serializedObject.FindProperty(p_PhysicsShapeGeneration).intValue;
+
+        /// <summary>
+        /// Gets the sprite whose physics shape is used with <see cref="PhysicsShapeGenerationMode.Sprite"/>.
+        /// </summary>
+        private Sprite GetPhysicsShapeSourceSprite()
+        {
+            if (UsesSourceSprite) return SourceSprite;
+
+            var mainChannel = serializedObject.FindProperty(p_MainChannel).objectReferenceValue as Texture2D;
+            if (!mainChannel) return null;
+
+            // the main channel has to be imported as a sprite that covers the whole texture
+            return AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(mainChannel)).OfType<Sprite>()
+                .FirstOrDefault(s => s.rect == new Rect(0, 0, mainChannel.width, mainChannel.height));
+        }
+
+        private bool CheckPhysicsShapeValidity(ref string message)
+        {
+            if (PhysicsShapeGeneration != PhysicsShapeGenerationMode.Sprite) return true;
+
+            var sprite = GetPhysicsShapeSourceSprite();
+            if (!sprite)
+            {
+                message = "Physics Shape Generation \"Sprite\" requires the main channel to be imported as a single sprite.";
+                return false;
+            }
+
+            if (sprite.GetPhysicsShapeCount() == 0)
+                message += "\nThe source sprite has no physics shape, so the tiles have no physics shape.";
+            return true;
+        }
+
         public bool CheckValidity(out string message)
         {
+            return CheckSpriteSourceValidity(out message) && CheckPhysicsShapeValidity(ref message);
+        }
+
+        private bool CheckSpriteSourceValidity(out string message)
+        {
+            if (UsesSourceSprite) return CheckSourceSpriteValidity(out message);
+
             var mainChannelProp = serializedObject.FindProperty(p_MainChannel);
 
             var mainChannel = mainChannelProp.objectReferenceValue as Texture2D;
@@ -308,7 +429,9 @@ namespace Ruccho.Fang
                    $" Combinations: {combinationsProp.arraySize}\n" +
                    $" Number of frames: {frames}\n" +
                    $" Tile size: {sprite.rect.width} x {sprite.rect.height}\n" +
-                   $" Texture size: {texture.width} x {texture.height}";
+                   (UsesSourceSprite
+                       ? $" Source texture: {texture.name}"
+                       : $" Texture size: {texture.width} x {texture.height}");
         }
 
         private void Generate()
@@ -323,7 +446,9 @@ namespace Ruccho.Fang
             bool isPacked = packerProp.objectReferenceValue;
 
             if (isPacked && !EditorUtility.DisplayDialog("Fang Auto Tile",
-                    "This tile is set to be used with texture packer. Are you sure?", "OK", "Cancel"))
+                    UsesSourceSprite
+                        ? "This tile is set to be used with texture packer. The generated textures are removed and the tile is removed from the packer. Are you sure?"
+                        : "This tile is set to be used with texture packer. Are you sure?", "OK", "Cancel"))
             {
                 return;
             }
@@ -331,7 +456,8 @@ namespace Ruccho.Fang
             try
             {
                 GenerateCombination();
-                GenerateTexture();
+                if (UsesSourceSprite) GenerateSourceSpriteData();
+                else GenerateTexture();
             }
             finally
             {
@@ -339,6 +465,276 @@ namespace Ruccho.Fang
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
+            }
+
+            RefreshTilemaps(target as FangAutoTile);
+        }
+
+        /// <summary>
+        /// Refreshes tilemaps in the loaded scenes that contain the tile, so that they reference the generated sprites.
+        /// </summary>
+        public static void RefreshTilemaps(FangAutoTile tile)
+        {
+            if (!tile) return;
+#pragma warning disable CS0618 // FindObjectsSortMode is obsolete in newer versions
+            var tilemaps = FindObjectsByType<Tilemap>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#pragma warning restore CS0618
+            foreach (var tilemap in tilemaps)
+            {
+                var array = new TileBase[tilemap.GetUsedTilesCount()];
+                tilemap.GetUsedTilesNonAlloc(array);
+                if (array.Any(t => t is IFangAutoTile fang && fang.Original == tile)) tilemap.RefreshAllTiles();
+            }
+        }
+
+        /// <summary>
+        /// Generates sprites whose meshes reference the source sprite directly. No textures are generated.
+        /// </summary>
+        public void GenerateSourceSpriteData()
+        {
+            var packerProp = serializedObject.FindProperty(p_Packer);
+            if (packerProp.objectReferenceValue is FangAutoTilePacker packer)
+            {
+                var packerSO = new SerializedObject(packer);
+                var targetsProp = packerSO.FindProperty("targets");
+                for (int i = targetsProp.arraySize - 1; i >= 0; i--)
+                {
+                    if (targetsProp.GetArrayElementAtIndex(i).objectReferenceValue == target)
+                    {
+                        targetsProp.GetArrayElementAtIndex(i).objectReferenceValue = null;
+                        targetsProp.DeleteArrayElementAtIndex(i);
+                    }
+                }
+
+                packerSO.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            packerProp.objectReferenceValue = null;
+
+            // The sprites are kept and overwritten, so that tilemaps saved in scenes keep referencing them.
+            ClearTextures();
+            serializedObject.FindProperty(p_CompiledChannels).arraySize = 0;
+
+            var assetPath = AssetDatabase.GetAssetPath(target);
+            var usedSprites = new HashSet<Sprite>();
+
+            var source = SourceSprite;
+            var sourcePacker = SourcePacker;
+            FangMeshSpriteBuilder builder;
+            if (sourcePacker)
+            {
+                if (!sourcePacker.TryGetEntry(source, out var entry))
+                    throw new InvalidOperationException(
+                        $"The source sprite is not packed in \"{sourcePacker.name}\". Generate the packer again.");
+                builder = new FangMeshSpriteBuilder(sourcePacker, entry);
+            }
+            else
+            {
+                builder = new FangMeshSpriteBuilder(source);
+            }
+
+            if (!builder.IsValid) throw new InvalidOperationException("The source sprite is not available.");
+
+            serializedObject.FindProperty(p_ExplicitPhysicsShapes).boolValue = true;
+
+            int sourceHeight = builder.SourceHeight;
+            var mode = PhysicsShapeGeneration;
+            var sourceShape = mode == PhysicsShapeGenerationMode.Sprite
+                ? FangPhysicsShapeUtility.GetPhysicsShapeInPixels(source)
+                : null;
+            var rectTexture = mode == PhysicsShapeGenerationMode.Auto ? CreateSpriteRectTexture(source) : null;
+
+            try
+            {
+                var rectBuffer = rectTexture ? new TemporaryTexture2DBuffer(rectTexture) : null;
+                var sourceRects = new List<RectInt>(4);
+                var destinations = new List<Vector2Int>(4);
+                int index = 0;
+
+                foreach (var image in GetSegments(false, builder.SourceWidth, sourceHeight).ToList())
+                {
+                    GetParts(image, sourceHeight, sourceRects, destinations);
+
+                    var sprite = builder.Build(image.TileWidth, image.TileHeight, image.PixelsPerUnit,
+                        sourceRects.ToArray(), destinations.ToArray());
+
+                    var existing = image.SpriteProperty.objectReferenceValue as Sprite;
+                    if (existing && AssetDatabase.GetAssetPath(existing) == assetPath && !usedSprites.Contains(existing))
+                    {
+                        // keep the object of the former sprite and overwrite its content
+                        EditorUtility.CopySerialized(sprite, existing);
+                        DestroyImmediate(sprite);
+                        sprite = existing;
+                    }
+                    else
+                    {
+                        AssetDatabase.AddObjectToAsset(sprite, target);
+                    }
+
+                    usedSprites.Add(sprite);
+                    sprite.name = $"{target.name}_{index++}";
+                    sprite.hideFlags |= HideFlags.HideInHierarchy;
+                    image.SpriteProperty.objectReferenceValue = sprite;
+                    EditorUtility.SetDirty(sprite);
+
+                    var shape = mode switch
+                    {
+                        PhysicsShapeGenerationMode.Fine => image.PhysicsShape.Points ?? new List<Vector2[]>(),
+                        PhysicsShapeGenerationMode.Sprite => FangPhysicsShapeUtility.Compose(sourceShape, sourceRects,
+                            destinations, image.TileWidth, image.TileHeight, image.PixelsPerUnit),
+                        PhysicsShapeGenerationMode.Auto => BakeAlphaPhysicsShape(image, rectBuffer),
+                        _ => new List<Vector2[]>()
+                    };
+                    FangPhysicsShapeUtility.SetPhysicsShape(sprite, shape);
+                }
+            }
+            finally
+            {
+                if (rectTexture) DestroyImmediate(rectTexture);
+            }
+
+            // sprites and textures left by former generations are not referenced anymore
+            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+            {
+                // AssetDatabase.IsSubAsset() is false for objects hidden in the hierarchy
+                if (subAsset is Sprite or Texture2D && !AssetDatabase.IsMainAsset(subAsset) &&
+                    !(subAsset is Sprite s && usedSprites.Contains(s)))
+                    DestroyImmediate(subAsset, true);
+            }
+        }
+
+        /// <summary>
+        /// Gets the regions of the source that make up the tile, and their positions in the tile.
+        /// </summary>
+        /// <param name="sourceHeight">Height of the source in pixels.</param>
+        /// <param name="sourceRects">Rects in pixels from the bottom-left corner of the source.</param>
+        /// <param name="destinations">Positions in pixels from the bottom-left corner of the tile.</param>
+        private static void GetParts(ITileImage image, int sourceHeight, List<RectInt> sourceRects,
+            List<Vector2Int> destinations)
+        {
+            sourceRects.Clear();
+            destinations.Clear();
+            foreach (var (segment, destination) in image.Parts)
+            {
+                // segments are specified from the top-left corner
+                sourceRects.Add(new RectInt(segment.X, sourceHeight - segment.Y - segment.H, segment.W, segment.H));
+                destinations.Add(destination);
+            }
+        }
+
+        /// <summary>
+        /// Computes the physics shape from the alpha of the pixels of the tile, in the same way as Sprite.Create().
+        /// </summary>
+        private static List<Vector2[]> BakeAlphaPhysicsShape(ITileImage image, TemporaryTexture2DBuffer source)
+        {
+            var texture = new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, false);
+            try
+            {
+                var buffer = new TemporaryTexture2DBuffer(texture);
+                buffer.ClearPixels();
+                image.Copy(source, buffer, 0, 0);
+                buffer.Apply();
+
+                // the overloads without generateFallbackPhysicsShape do not generate the physics shape
+                var sprite = Sprite.Create(texture, image.LocalSpriteRect, new Vector2(0.5f, 0.5f), image.PixelsPerUnit,
+                    0, SpriteMeshType.FullRect, Vector4.zero, true);
+                try
+                {
+                    var result = new List<Vector2[]>();
+                    var list = new List<Vector2>();
+                    for (int i = 0; i < sprite.GetPhysicsShapeCount(); i++)
+                    {
+                        sprite.GetPhysicsShape(i, list);
+                        result.Add(list.ToArray());
+                    }
+
+                    return result;
+                }
+                finally
+                {
+                    DestroyImmediate(sprite);
+                }
+            }
+            finally
+            {
+                DestroyImmediate(texture);
+            }
+        }
+
+        /// <summary>
+        /// Sets the physics shapes of the images whose sprites are generated with textures.
+        /// The shapes of <see cref="PhysicsShapeGenerationMode.Fine"/> are set in <see cref="GetSegments(bool)"/>.
+        /// </summary>
+        public void SetPhysicsShapesForGeneratedTexture(IEnumerable<ITileImage> images)
+        {
+            serializedObject.FindProperty(p_ExplicitPhysicsShapes).boolValue = true;
+
+            var mode = PhysicsShapeGeneration;
+            if (mode == PhysicsShapeGenerationMode.Fine) return;
+
+            var mainChannel = serializedObject.FindProperty(p_MainChannel).objectReferenceValue as Texture2D;
+            var sourceShape = mode == PhysicsShapeGenerationMode.Sprite
+                ? FangPhysicsShapeUtility.GetPhysicsShapeInPixels(GetPhysicsShapeSourceSprite())
+                : null;
+            var mainBuffer = mode == PhysicsShapeGenerationMode.Auto ? new TemporaryTexture2DBuffer(mainChannel) : null;
+            var sourceRects = new List<RectInt>(4);
+            var destinations = new List<Vector2Int>(4);
+
+            foreach (var image in images)
+            {
+                switch (mode)
+                {
+                    case PhysicsShapeGenerationMode.Auto:
+                        image.PhysicsShape = new TilePhysicsShape(BakeAlphaPhysicsShape(image, mainBuffer));
+                        break;
+                    case PhysicsShapeGenerationMode.Sprite:
+                        GetParts(image, mainChannel.height, sourceRects, destinations);
+                        image.PhysicsShape = new TilePhysicsShape(FangPhysicsShapeUtility.Compose(sourceShape,
+                            sourceRects, destinations, image.TileWidth, image.TileHeight, image.PixelsPerUnit));
+                        break;
+                    default:
+                        image.PhysicsShape = new TilePhysicsShape(new List<Vector2[]>());
+                        break;
+                }
+            }
+        }
+        /// <summary>
+        /// Copies the rect of the sprite into a new readable texture. The texture of the sprite does not need to be readable.
+        /// </summary>
+        private static Texture2D CreateSpriteRectTexture(Sprite sprite)
+        {
+            var path = AssetDatabase.GetAssetPath(sprite);
+            var original = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>().FirstOrDefault(s => s.name == sprite.name) ?? sprite;
+            // use the texture before packing
+            var sourceTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(path) ?? original.texture;
+            var rect = original.rect;
+            return CopyTextureRect(sourceTexture, new RectInt(Mathf.RoundToInt(rect.x), Mathf.RoundToInt(rect.y),
+                Mathf.RoundToInt(rect.width), Mathf.RoundToInt(rect.height)));
+        }
+
+        /// <summary>
+        /// Copies a rect of the texture into a new readable texture. The texture does not need to be readable.
+        /// The pixel values are kept for both sRGB and linear textures.
+        /// </summary>
+        internal static Texture2D CopyTextureRect(Texture2D texture, RectInt rect)
+        {
+            bool linear = !GraphicsFormatUtility.IsSRGBFormat(texture.graphicsFormat);
+            var rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32,
+                linear ? RenderTextureReadWrite.Linear : RenderTextureReadWrite.sRGB);
+            var prev = RenderTexture.active;
+            try
+            {
+                Graphics.Blit(texture, rt);
+                RenderTexture.active = rt;
+                var result = new Texture2D(rect.width, rect.height, TextureFormat.RGBA32, false, linear);
+                result.ReadPixels(new Rect(rect.x, rect.y, rect.width, rect.height), 0, 0);
+                result.Apply();
+                return result;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
             }
         }
 
@@ -459,6 +855,8 @@ namespace Ruccho.Fang
             var packerProp = serializedObject.FindProperty(p_Packer);
 
             packerProp.objectReferenceValue = null;
+            // the source sprite packer is only for SpriteSourceType.SourceSpriteMesh
+            serializedObject.FindProperty(p_SourcePacker).objectReferenceValue = null;
 
             var enablePadding = serializedObject.FindProperty(p_EnablePadding).boolValue;
             var wrapMode = (TextureWrapMode)serializedObject.FindProperty(p_WrapMode).enumValueIndex;
@@ -468,6 +866,7 @@ namespace Ruccho.Fang
 
 
             IReadOnlyList<ITileImage> segments = GetSegments(enablePadding).ToList();
+            SetPhysicsShapesForGeneratedTexture(segments);
 
             var segmentsOrdered = segments.OrderByDescending((seg) => seg.Width * seg.Height);
 
@@ -689,18 +1088,18 @@ namespace Ruccho.Fang
 
         public IEnumerable<ITileImage> GetSegments(bool enablePadding)
         {
-            var mainChannelProp = serializedObject.FindProperty(p_MainChannel);
+            var mainChannel = serializedObject.FindProperty(p_MainChannel).objectReferenceValue as Texture2D;
+            return GetSegments(enablePadding, mainChannel.width, mainChannel.height);
+        }
 
+        public IEnumerable<ITileImage> GetSegments(bool enablePadding, int width, int height)
+        {
             var explicitPixelsPerUnit = serializedObject.FindProperty(p_PixelsPerUnit).intValue;
             var oneTilePerUnit = serializedObject.FindProperty(p_OneTilePerUnit).boolValue;
-            var physicsShapeGeneration = (PhysicsShapeGenerationMode) serializedObject.FindProperty(p_PhysicsShapeGeneration).enumValueIndex;
+            // enumValueIndex is the index in the declaration order, which differs from the value
+            var physicsShapeGeneration = PhysicsShapeGeneration;
 
             var numSlopes = serializedObject.FindProperty(p_NumSlopes).intValue;
-
-            var mainChannel = mainChannelProp.objectReferenceValue as Texture2D;
-
-            int width = mainChannel.width;
-            int height = mainChannel.height;
 
             // 5 (base) + 
             // 4 (slopeSize=1) +
@@ -713,6 +1112,9 @@ namespace Ruccho.Fang
             int numFrames = width / tileSize;
 
             int pixelsPerUnit = oneTilePerUnit ? tileSize : explicitPixelsPerUnit;
+
+            // the shapes of Fine are defined with the tile size as 1
+            float fineScale = (float)tileSize / pixelsPerUnit;
 
             var combinationsProp = serializedObject.FindProperty(p_Combinations);
             for (int combination = 0; combination < combinationsProp.arraySize; combination++)
@@ -761,10 +1163,10 @@ namespace Ruccho.Fang
                         {
                             new[]
                             {
-                                new Vector2(-0.5f, -0.5f),
-                                new Vector2(-0.5f, 0.5f),
-                                new Vector2(0.5f, 0.5f),
-                                new Vector2(0.5f, -0.5f)
+                                new Vector2(-0.5f, -0.5f) * fineScale,
+                                new Vector2(-0.5f, 0.5f) * fineScale,
+                                new Vector2(0.5f, 0.5f) * fineScale,
+                                new Vector2(0.5f, -0.5f) * fineScale
                             }
                         }));
                     }
@@ -848,6 +1250,7 @@ namespace Ruccho.Fang
 
                                     p.x -= 0.5f;
                                     p.y -= 0.5f;
+                                    p *= fineScale;
 
                                     if (isVertical)
                                     {
@@ -1027,12 +1430,21 @@ namespace Ruccho.Fang
 
         int Height { get; }
 
+        int TileWidth { get; }
+
+        int TileHeight { get; }
+
         Rect LocalSpriteRect { get; }
 
         int PixelsPerUnit { get; }
         SerializedProperty SpriteProperty { get; }
 
-        TilePhysicsShape PhysicsShape { get; }
+        TilePhysicsShape PhysicsShape { get; set; }
+
+        /// <summary>
+        /// Segments of the source and their positions in the tile, in pixels from the bottom-left corner of the tile.
+        /// </summary>
+        IEnumerable<(TileSegment Segment, Vector2Int Destination)> Parts { get; }
 
         void Copy(TemporaryTexture2DBuffer src, TemporaryTexture2DBuffer dst, int dstX, int dstY);
     }
@@ -1056,6 +1468,11 @@ namespace Ruccho.Fang
 
         public Rect LocalSpriteRect =>
             Expand ? new Rect(1, 1, TileWidth, TileHeight) : new Rect(0, 0, TileWidth, TileHeight);
+
+        public IEnumerable<(TileSegment Segment, Vector2Int Destination)> Parts
+        {
+            get { yield return (Self, Vector2Int.zero); }
+        }
 
         public TileSingleImage(TileSegment self, SerializedProperty spriteProperty, int pixelsPerUnit, bool expand)
         {
@@ -1134,6 +1551,18 @@ namespace Ruccho.Fang
         public Rect LocalSpriteRect =>
             Expand ? new Rect(1, 1, TileWidth, TileHeight) : new Rect(0, 0, TileWidth, TileHeight);
 
+
+        public IEnumerable<(TileSegment Segment, Vector2Int Destination)> Parts
+        {
+            get
+            {
+                // same as Copy()
+                yield return (Bl, new Vector2Int(0, 0));
+                yield return (Br, new Vector2Int(Bl.W, 0));
+                yield return (Tl, new Vector2Int(0, Bl.H));
+                yield return (Tr, new Vector2Int(Bl.W, Bl.H));
+            }
+        }
 
         public TileCombinationImage(TileSegment bl, TileSegment br, TileSegment tl, TileSegment tr,
             SerializedProperty spriteProperty, int pixelsPerUnit, bool expand)

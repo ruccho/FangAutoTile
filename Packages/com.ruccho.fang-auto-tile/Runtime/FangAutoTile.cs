@@ -20,6 +20,20 @@ namespace Ruccho.Fang
             Random
         }
 
+        public enum SpriteSourceType
+        {
+            /// <summary>
+            /// Textures that contain all combinations are generated, and the sprites reference the generated textures.
+            /// </summary>
+            GeneratedTexture,
+
+            /// <summary>
+            /// No textures are generated. The sprites have meshes that reference regions of the source sprite directly,
+            /// and have the secondary textures of the source sprite.
+            /// </summary>
+            SourceSpriteMesh
+        }
+
         #region Parameters
 
 #pragma warning disable CS0414
@@ -30,11 +44,13 @@ namespace Ruccho.Fang
         private bool oneTilePerUnit = true;
 
         [SerializeField] private int pixelsPerUnit = 16;
-        [SerializeField] private PhysicsShapeGenerationMode physicsShapeGeneration = PhysicsShapeGenerationMode.Sprite;
+        [SerializeField] private PhysicsShapeGenerationMode physicsShapeGeneration = PhysicsShapeGenerationMode.Fine;
         [SerializeField] private TextureWrapMode wrapMode = TextureWrapMode.Clamp;
         [SerializeField] private FilterMode filterMode = FilterMode.Point;
 
-        [SerializeField, Header("Sources")] private Texture2D mainChannel = default;
+        [SerializeField, Header("Sources")] private SpriteSourceType spriteSource = SpriteSourceType.GeneratedTexture;
+        [SerializeField] private Texture2D mainChannel = default;
+        [SerializeField] private Sprite sourceSprite = default;
         [SerializeField, Min(0)] private int numSlopes = 0;
         [SerializeField] private Texture2D[] subChannels = default;
 #pragma warning restore CS0414
@@ -61,6 +77,7 @@ namespace Ruccho.Fang
 #pragma warning disable CS0414
         [SerializeField] private Texture2D[] compiledChannels = default;
         [SerializeField] private FangAutoTilePacker packer = default;
+        [SerializeField] private FangSourceSpritePacker sourcePacker = default;
 #pragma warning restore CS0414
 
         [SerializeField] private TileCombination[] combinations = default;
@@ -69,10 +86,16 @@ namespace Ruccho.Fang
 
         [SerializeField] private SlopeDefinition slopeDefinition = default;
 
+        // Whether the physics shapes of all sprites are set explicitly. A sprite without physics shape then means
+        // that the tile has no collider, while the collider of such a sprite covers the whole tile by default.
+        [SerializeField] private bool explicitPhysicsShapes = false;
+
         #endregion
 
         public FangAutoTile Original => this;
         public bool IsSlope => isSlope;
+        public SpriteSourceType SpriteSource => spriteSource;
+        public Sprite SourceSprite => sourceSprite;
 
         private Sprite[] currentAnimationFrames = default;
         
@@ -302,6 +325,12 @@ namespace Ruccho.Fang
                     }
                 }
             }
+
+            if (explicitPhysicsShapes && tileData.colliderType == Tile.ColliderType.Sprite && tileData.sprite &&
+                tileData.sprite.GetPhysicsShapeCount() == 0)
+            {
+                tileData.colliderType = Tile.ColliderType.None;
+            }
         }
 
         private float GetRandom(Vector3Int location)
@@ -513,9 +542,71 @@ namespace Ruccho.Fang
         public Sprite[] Frames => frames;
     }
 
+    /// <summary>
+    /// Layout of the source texture: frames are arranged horizontally, and the five base tiles and slope tiles vertically.
+    /// </summary>
+    public readonly struct FangTileLayout
+    {
+        public int TileSize { get; }
+        public int NumFrames { get; }
+        public int NumTilesInFrame { get; }
+
+        private FangTileLayout(int tileSize, int numFrames, int numTilesInFrame)
+        {
+            TileSize = tileSize;
+            NumFrames = numFrames;
+            NumTilesInFrame = numTilesInFrame;
+        }
+
+        public static int GetNumTilesInFrame(int numSlopes)
+        {
+            // 5 (base) +
+            // 4 (slopeSize=1) +
+            // n * 4 * 2 (slopeSize=n) +
+            // ...
+            int numTilesInFrame = 5 + 4 * numSlopes * (numSlopes + 1);
+            if (numSlopes >= 1) numTilesInFrame -= 4;
+            return numTilesInFrame;
+        }
+
+        public static bool TryGet(int width, int height, int numSlopes, out FangTileLayout layout)
+        {
+            int numTilesInFrame = GetNumTilesInFrame(numSlopes);
+            int tileSize = height / numTilesInFrame;
+            if (tileSize <= 0 || height % numTilesInFrame != 0 || width % tileSize != 0)
+            {
+                layout = default;
+                return false;
+            }
+
+            layout = new FangTileLayout(tileSize, width / tileSize, numTilesInFrame);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// How the physics shapes of the generated sprites are determined.
+    /// </summary>
     public enum PhysicsShapeGenerationMode
     {
-        Sprite,
-        Fine
+        /// <summary>
+        /// The whole tile for normal tiles, and the slope for slope tiles.
+        /// </summary>
+        Fine = 1,
+
+        /// <summary>
+        /// The physics shape of the source sprite, clipped and arranged in the same way as the pixels of the tile.
+        /// </summary>
+        Sprite = 2,
+
+        /// <summary>
+        /// Generated from the alpha of the pixels of the tile.
+        /// </summary>
+        Auto = 0,
+
+        /// <summary>
+        /// No physics shape.
+        /// </summary>
+        None = 3
     }
 }
