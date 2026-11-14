@@ -10,13 +10,18 @@ namespace Ruccho.Fang
 {
     /// <summary>
     /// Builds tile sprites whose meshes reference regions of a source sprite directly.
-    /// The sprites reference the texture of the source sprite before packing, and have the secondary textures of the source sprite.
+    /// The sprites reference the texture of the source sprite before packing (or the textures of a
+    /// <see cref="FangSourceSpritePacker"/>), and have the secondary textures of the source sprite.
     /// </summary>
     internal readonly struct FangMeshSpriteBuilder
     {
         private readonly Texture2D texture;
         private readonly SecondarySpriteTexture[] secondaryTextures;
         private readonly RectInt sourceRect;
+
+        // set when the sprites reference the textures of a packer
+        private readonly bool isPacked;
+        private readonly FangSourceSpritePacker.Entry entry;
 
         public bool IsValid => texture != null;
 
@@ -25,12 +30,12 @@ namespace Ruccho.Fang
             texture = null;
             secondaryTextures = Array.Empty<SecondarySpriteTexture>();
             sourceRect = default;
+            isPacked = false;
+            entry = default;
 
             if (!source) return;
 
-            var path = AssetDatabase.GetAssetPath(source);
-            texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (!texture) texture = source.texture;
+            texture = GetSourceTexture(source);
             if (!texture) return;
 
             // Sprite.rect is the location on the texture before packing
@@ -38,20 +43,47 @@ namespace Ruccho.Fang
             sourceRect = new RectInt(Mathf.RoundToInt(rect.x), Mathf.RoundToInt(rect.y), Mathf.RoundToInt(rect.width),
                 Mathf.RoundToInt(rect.height));
 
-            if (AssetImporter.GetAtPath(path) is TextureImporter importer)
+            secondaryTextures = GetSecondaryTextures(source);
+        }
+
+        /// <summary>
+        /// Gets the secondary textures of the sprite before packing.
+        /// </summary>
+        public static SecondarySpriteTexture[] GetSecondaryTextures(Sprite source)
+        {
+            if (AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(source)) is TextureImporter importer)
             {
-                secondaryTextures = importer.secondarySpriteTextures?.Where(s => s.texture).ToArray() ??
-                                    Array.Empty<SecondarySpriteTexture>();
+                return importer.secondarySpriteTextures?.Where(s => s.texture).ToArray() ??
+                       Array.Empty<SecondarySpriteTexture>();
             }
-            else
-            {
-                var count = source.GetSecondaryTextureCount();
-                if (count > 0)
-                {
-                    secondaryTextures = new SecondarySpriteTexture[count];
-                    source.GetSecondaryTextures(secondaryTextures);
-                }
-            }
+
+            var count = source.GetSecondaryTextureCount();
+            var result = new SecondarySpriteTexture[count];
+            if (count > 0) source.GetSecondaryTextures(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Gets the texture of the sprite before packing.
+        /// </summary>
+        public static Texture2D GetSourceTexture(Sprite source)
+        {
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GetAssetPath(source));
+            return texture ? texture : source.texture;
+        }
+
+        /// <summary>
+        /// Builds sprites that reference the location of the source sprite in the textures of a packer.
+        /// </summary>
+        public FangMeshSpriteBuilder(FangSourceSpritePacker packer, FangSourceSpritePacker.Entry entry)
+        {
+            var pages = packer.Pages;
+            texture = pages.Length > 0 ? pages[0].Texture : null;
+            sourceRect = new RectInt(Vector2Int.zero, entry.Size);
+            isPacked = true;
+            this.entry = entry;
+            secondaryTextures = pages.Skip(1)
+                .Select(p => new SecondarySpriteTexture { name = p.Name, texture = p.Texture }).ToArray();
         }
 
         public int SourceWidth => sourceRect.width;
@@ -87,6 +119,12 @@ namespace Ruccho.Fang
                     var src = sourceRects[q];
                     var dst = destinationPositions[q];
 
+                    // position of the rect in the texture
+                    var origin = sourceRect.position + src.position;
+                    if (isPacked && !entry.TryGetPosition(src, out origin))
+                        throw new InvalidOperationException(
+                            $"The rect {src} is not inside one tile of the packed source sprite.");
+
                     for (int c = 0; c < 4; c++)
                     {
                         var corner = new Vector2Int((c & 1) * src.width, (c >> 1) * src.height);
@@ -95,8 +133,8 @@ namespace Ruccho.Fang
                             (dst.y + corner.y - halfHeight) / pixelsPerUnit,
                             0f);
                         uvs[q * 4 + c] = new Vector2(
-                            (float)(sourceRect.x + src.x + corner.x) / texture.width,
-                            (float)(sourceRect.y + src.y + corner.y) / texture.height);
+                            (float)(origin.x + corner.x) / texture.width,
+                            (float)(origin.y + corner.y) / texture.height);
                     }
 
                     var v = (ushort)(q * 4);

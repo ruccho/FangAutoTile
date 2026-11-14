@@ -70,7 +70,7 @@ namespace Ruccho.Fang
                     if (editor.UsesSourceSprite)
                     {
                         EditorUtility.DisplayDialog("Fang Auto Tile",
-                            $"\"{target.name}\" uses its source sprite directly and cannot be packed.", "OK");
+                            $"\"{target.name}\" uses its source sprite directly. Use {nameof(FangSourceSpritePacker)} to pack it.", "OK");
                         return;
                     }
 

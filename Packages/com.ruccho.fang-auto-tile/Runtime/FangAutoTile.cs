@@ -77,6 +77,7 @@ namespace Ruccho.Fang
 #pragma warning disable CS0414
         [SerializeField] private Texture2D[] compiledChannels = default;
         [SerializeField] private FangAutoTilePacker packer = default;
+        [SerializeField] private FangSourceSpritePacker sourcePacker = default;
 #pragma warning restore CS0414
 
         [SerializeField] private TileCombination[] combinations = default;

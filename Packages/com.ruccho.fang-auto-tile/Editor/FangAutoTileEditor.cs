@@ -36,6 +36,7 @@ namespace Ruccho.Fang
 
 
         public static readonly string p_Packer = "packer";
+        public static readonly string p_SourcePacker = "sourcePacker";
         public static readonly string p_CompiledChannels = "compiledChannels";
         public static readonly string p_Combinations = "combinations";
         public static readonly string p_CombinationTable = "combinationTable";
@@ -150,7 +151,7 @@ namespace Ruccho.Fang
 
 
                 EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(p_Packer));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(UsesSourceSprite ? p_SourcePacker : p_Packer));
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(validityMessage, isValid ? MessageType.Info : MessageType.Error);
@@ -238,6 +239,9 @@ namespace Ruccho.Fang
 
         private Sprite SourceSprite => serializedObject.FindProperty(p_SourceSprite).objectReferenceValue as Sprite;
 
+        private FangSourceSpritePacker SourcePacker =>
+            serializedObject.FindProperty(p_SourcePacker).objectReferenceValue as FangSourceSpritePacker;
+
         private bool CheckSourceSpriteValidity(out string message)
         {
             var sprite = SourceSprite;
@@ -276,12 +280,18 @@ namespace Ruccho.Fang
                 return false;
             }
 
-            var secondaryCount = sprite.GetSecondaryTextureCount();
-            var secondaries = new SecondarySpriteTexture[secondaryCount];
-            sprite.GetSecondaryTextures(secondaries);
+            var sourcePacker = SourcePacker;
+            if (sourcePacker && !sourcePacker.TryGetEntry(sprite, out _))
+            {
+                message = $"The source sprite is not packed in \"{sourcePacker.name}\". Generate the packer again.";
+                return false;
+            }
+
+            var secondaries = FangMeshSpriteBuilder.GetSecondaryTextures(sprite);
             message = "Ready to generate a tile!\n" +
                       "Secondary textures: " +
-                      (secondaryCount == 0 ? "none" : string.Join(", ", secondaries.Select(s => s.name)));
+                      (secondaries.Length == 0 ? "none" : string.Join(", ", secondaries.Select(s => s.name))) +
+                      (sourcePacker ? $"\nPacked in \"{sourcePacker.name}\"" : "");
             return true;
         }
 
@@ -501,20 +511,28 @@ namespace Ruccho.Fang
 
             packerProp.objectReferenceValue = null;
 
-            ClearSprites();
+            // The sprites are kept and overwritten, so that tilemaps saved in scenes keep referencing them.
             ClearTextures();
             serializedObject.FindProperty(p_CompiledChannels).arraySize = 0;
 
-            // sprites and textures left by former generations are not referenced anymore
-            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(target)))
-            {
-                // AssetDatabase.IsSubAsset() is false for objects hidden in the hierarchy
-                if (subAsset is Sprite or Texture2D && !AssetDatabase.IsMainAsset(subAsset))
-                    DestroyImmediate(subAsset, true);
-            }
+            var assetPath = AssetDatabase.GetAssetPath(target);
+            var usedSprites = new HashSet<Sprite>();
 
             var source = SourceSprite;
-            var builder = new FangMeshSpriteBuilder(source);
+            var sourcePacker = SourcePacker;
+            FangMeshSpriteBuilder builder;
+            if (sourcePacker)
+            {
+                if (!sourcePacker.TryGetEntry(source, out var entry))
+                    throw new InvalidOperationException(
+                        $"The source sprite is not packed in \"{sourcePacker.name}\". Generate the packer again.");
+                builder = new FangMeshSpriteBuilder(sourcePacker, entry);
+            }
+            else
+            {
+                builder = new FangMeshSpriteBuilder(source);
+            }
+
             if (!builder.IsValid) throw new InvalidOperationException("The source sprite is not available.");
 
             serializedObject.FindProperty(p_ExplicitPhysicsShapes).boolValue = true;
@@ -539,10 +557,25 @@ namespace Ruccho.Fang
 
                     var sprite = builder.Build(image.TileWidth, image.TileHeight, image.PixelsPerUnit,
                         sourceRects.ToArray(), destinations.ToArray());
+
+                    var existing = image.SpriteProperty.objectReferenceValue as Sprite;
+                    if (existing && AssetDatabase.GetAssetPath(existing) == assetPath && !usedSprites.Contains(existing))
+                    {
+                        // keep the object of the former sprite and overwrite its content
+                        EditorUtility.CopySerialized(sprite, existing);
+                        DestroyImmediate(sprite);
+                        sprite = existing;
+                    }
+                    else
+                    {
+                        AssetDatabase.AddObjectToAsset(sprite, target);
+                    }
+
+                    usedSprites.Add(sprite);
                     sprite.name = $"{target.name}_{index++}";
-                    AssetDatabase.AddObjectToAsset(sprite, target);
                     sprite.hideFlags |= HideFlags.HideInHierarchy;
                     image.SpriteProperty.objectReferenceValue = sprite;
+                    EditorUtility.SetDirty(sprite);
 
                     var shape = mode switch
                     {
@@ -558,6 +591,15 @@ namespace Ruccho.Fang
             finally
             {
                 if (rectTexture) DestroyImmediate(rectTexture);
+            }
+
+            // sprites and textures left by former generations are not referenced anymore
+            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+            {
+                // AssetDatabase.IsSubAsset() is false for objects hidden in the hierarchy
+                if (subAsset is Sprite or Texture2D && !AssetDatabase.IsMainAsset(subAsset) &&
+                    !(subAsset is Sprite s && usedSprites.Contains(s)))
+                    DestroyImmediate(subAsset, true);
             }
         }
 
@@ -666,17 +708,26 @@ namespace Ruccho.Fang
             // use the texture before packing
             var sourceTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(path) ?? original.texture;
             var rect = original.rect;
+            return CopyTextureRect(sourceTexture, new RectInt(Mathf.RoundToInt(rect.x), Mathf.RoundToInt(rect.y),
+                Mathf.RoundToInt(rect.width), Mathf.RoundToInt(rect.height)));
+        }
 
-            var rt = RenderTexture.GetTemporary(sourceTexture.width, sourceTexture.height, 0, RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.sRGB);
+        /// <summary>
+        /// Copies a rect of the texture into a new readable texture. The texture does not need to be readable.
+        /// The pixel values are kept for both sRGB and linear textures.
+        /// </summary>
+        internal static Texture2D CopyTextureRect(Texture2D texture, RectInt rect)
+        {
+            bool linear = !GraphicsFormatUtility.IsSRGBFormat(texture.graphicsFormat);
+            var rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32,
+                linear ? RenderTextureReadWrite.Linear : RenderTextureReadWrite.sRGB);
             var prev = RenderTexture.active;
             try
             {
-                Graphics.Blit(sourceTexture, rt);
+                Graphics.Blit(texture, rt);
                 RenderTexture.active = rt;
-                var result = new Texture2D(Mathf.RoundToInt(rect.width), Mathf.RoundToInt(rect.height),
-                    TextureFormat.RGBA32, false);
-                result.ReadPixels(rect, 0, 0);
+                var result = new Texture2D(rect.width, rect.height, TextureFormat.RGBA32, false, linear);
+                result.ReadPixels(new Rect(rect.x, rect.y, rect.width, rect.height), 0, 0);
                 result.Apply();
                 return result;
             }
@@ -804,6 +855,8 @@ namespace Ruccho.Fang
             var packerProp = serializedObject.FindProperty(p_Packer);
 
             packerProp.objectReferenceValue = null;
+            // the source sprite packer is only for SpriteSourceType.SourceSpriteMesh
+            serializedObject.FindProperty(p_SourcePacker).objectReferenceValue = null;
 
             var enablePadding = serializedObject.FindProperty(p_EnablePadding).boolValue;
             var wrapMode = (TextureWrapMode)serializedObject.FindProperty(p_WrapMode).enumValueIndex;
