@@ -67,6 +67,13 @@ namespace Ruccho.Fang
                     var editor = CreateEditor(target, typeof(FangAutoTileEditor)) as FangAutoTileEditor;
                     editors.Add(editor);
 
+                    if (editor.UsesSourceSprite)
+                    {
+                        EditorUtility.DisplayDialog("Fang Auto Tile",
+                            $"\"{target.name}\" uses its source sprite directly and cannot be packed.", "OK");
+                        return;
+                    }
+
                     if (!editor.CheckValidity(out var mes))
                     {
                         EditorUtility.DisplayDialog("Fang Auto Tile", mes, "OK");
@@ -107,8 +114,10 @@ namespace Ruccho.Fang
                     var mainChannel =
                         e.serializedObject.FindProperty(FangAutoTileEditor.p_MainChannel)
                             .objectReferenceValue as Texture2D;
-                    segments.AddRange(e.GetSegments(enablePadding)
-                        .Select(s => new TileDrawingItem(s, new TemporaryTexture2DBuffer(mainChannel))));
+                    var images = e.GetSegments(enablePadding).ToList();
+                    e.SetPhysicsShapesForGeneratedTexture(images);
+                    var buffer = new TemporaryTexture2DBuffer(mainChannel);
+                    segments.AddRange(images.Select(s => new TileDrawingItem(s, buffer)));
                 }
 
                 var segmentsOrdered = segments.OrderByDescending(s => s.Segment.Width * s.Segment.Height);
